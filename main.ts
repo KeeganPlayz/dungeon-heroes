@@ -50,7 +50,7 @@ function SpawnZombie1 () {
     200,
     true
     )
-    Zombie_1.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Zombie_1.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 function SpawnPizza () {
     Snack = sprites.create(assets.image`Pizza Image`, SpriteKind.Collectible)
@@ -77,22 +77,79 @@ function SpawnSnake () {
     100,
     characterAnimations.rule(Predicate.Moving)
     )
-    Snake.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Above_Average_Speed)
+    Snake.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Above_Average_Speed)
 }
 mp.onButtonEvent(mp.MultiplayerButton.B, ControllerButtonEvent.Pressed, function (player2) {
     if (!(story.isMenuOpen())) {
         if (Start_Battle == 0) {
             for (let index = 0; index <= 3; index++) {
                 if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) - 1] == 0) {
-                    game.showLongText("You cannot use a locked character!", DialogLayout.Bottom)
+                    if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) >= 8) {
+                        if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 8 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Ship for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[7] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+                            } else {
+                                game.reset()
+                            }
+
+                        } else if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 9 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Plane for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[8] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+                            } else {
+                                game.reset()
+                            }
+                        } else if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 10 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Meteor for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[9] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+
+                            } else {
+                                game.reset()
+                            }
+                        } else {
+                            game.showLongText("You can buy this character when you have enough cash.", DialogLayout.Bottom)
+                        }
+
+                    } else {
+                        game.showLongText("You cannot use a locked character!", DialogLayout.Bottom)
+                    }
                     break;
                 } else {
+                    if ((mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 6)) {
+                        Duck_Count += 1
+                    } else if ((mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 10)) {
+                        Meteor_Count += 1
+                    }
+                    if (Duck_Count >= 2) {
+                        game.showLongText("No more than 1 Duck!", DialogLayout.Bottom)
+                        Duck_Count = 0
+                        Meteor_Count = 0
+                        break;
+                    } else if (Meteor_Count >= 2) {
+                        game.showLongText("No more than 1 Meteor!", DialogLayout.Bottom)
+                        Duck_Count = 0
+                        Meteor_Count = 0
+                        break;
+                    }
                     if (index == 3) {
                         Game_Mode = "Versus"
                         Start_Battle = 1
                     }
                     continue;
                 }
+                Duck_Count = 0
+                Meteor_Count = 0
             }
         } else if (Start_Battle == 1) {
             if (Players[mp.getPlayerProperty(player2, mp.PlayerProperty.Number)] == mp.getPlayerProperty(player2, mp.PlayerProperty.Number)) {
@@ -345,8 +402,7 @@ mp.onButtonEvent(mp.MultiplayerButton.B, ControllerButtonEvent.Pressed, function
 scene.onHitWall(SpriteKind.Player, function (sprite, location) {
     if (characterAnimations.matchesRule(sprite, characterAnimations.rule(Predicate.HittingWallUp))) {
         if (tiles.tileAtLocationEquals(location, sprites.dungeon.purpleSwitchDown)) {
-            story.showPlayerChoices("Turn on the lever", "Not yet")
-            if (true) {
+            if (mp.isButtonPressed(mp.getPlayerBySprite(sprite), mp.MultiplayerButton.A)) {
                 tiles.setTileAt(location, sprites.dungeon.purpleOuterNorth0)
                 Purple_Wall_Toggle = true
                 tileUtil.setWalls(sprites.dungeon.purpleOuterEast2, false)
@@ -357,8 +413,7 @@ scene.onHitWall(SpriteKind.Player, function (sprite, location) {
                 tileUtil.replaceAllTiles(sprites.dungeon.purpleOuterWest2, sprites.dungeon.darkGroundCenter)
             }
         } else if (tiles.tileAtLocationEquals(location, sprites.dungeon.greenSwitchDown)) {
-            story.showPlayerChoices("Turn on the lever", "Not yet")
-            if (true) {
+            if (mp.isButtonPressed(mp.getPlayerBySprite(sprite), mp.MultiplayerButton.A)) {
                 tiles.setTileAt(location, sprites.dungeon.greenOuterNorth0)
                 Green_Wall_Toggle = true
                 tileUtil.setWalls(sprites.dungeon.greenOuterEast2, false)
@@ -384,27 +439,27 @@ scene.onHitWall(SpriteKind.Player, function (sprite, location) {
                             tileUtil.replaceAllTiles(sprites.dungeon.doorLockedNorth, sprites.dungeon.floorLight2)
                             if (story.checkLastAnswer("Only 1, please.")) {
                                 SpawnEvilPrincess()
-                                Evil_Princess.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), 0)
+                                Evil_Princess.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), 0)
                                 tiles.placeOnTile(Evil_Princess, location)
                                 game.setDialogCursor(assets.image`Evil Princess Image`)
-                                game.setDialogCursor(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)).image)
+                                game.setDialogCursor(sprites.allOfKind(SpriteKind.Player)._pickRandom().image)
                                 game.showLongText("What happened.. to.. you?", DialogLayout.Bottom)
                                 game.setDialogCursor(assets.image`Evil Princess Image`)
                                 game.showLongText("ERGHHYUUUUUUUUUUUUUUUUA", DialogLayout.Bottom)
                                 tiles.placeOnTile(Evil_Princess, tiles.getTileLocation(15, 22))
-                                Evil_Princess.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Fast_Speed)
+                                Evil_Princess.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Fast_Speed)
                                 Evil_Princess.setKind(SpriteKind.Enemy)
                             } else if (story.checkLastAnswer("Let me tell you the exact number.")) {
                                 index = game.askForNumber("Spawn how much of this boss?")
                                 for (let index2 = 0; index2 < index; index2++) {
                                     SpawnEvilPrincess()
-                                    Evil_Princess.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), 0)
+                                    Evil_Princess.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), 0)
                                     tiles.placeOnTile(Evil_Princess, tiles.getTileLocation(randint(0, 31), randint(0, 31)))
-                                    Evil_Princess.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Above_Average_Speed)
+                                    Evil_Princess.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Above_Average_Speed)
                                     Evil_Princess.setKind(SpriteKind.Enemy)
                                 }
                                 game.setDialogCursor(assets.image`Evil Princess Image`)
-                                game.setDialogCursor(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)).image)
+                                game.setDialogCursor(sprites.allOfKind(SpriteKind.Player)._pickRandom().image)
                                 game.showLongText("What happened.. to.. you?", DialogLayout.Bottom)
                                 game.setDialogCursor(assets.image`Evil Princess Image`)
                                 game.showLongText("ERGHHYUUUUUUUUUUUUUUUUA", DialogLayout.Bottom)
@@ -467,7 +522,7 @@ function SpawnAngelFish () {
     200,
     true
     )
-    Angel_Fish.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Average_Speed)
+    Angel_Fish.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Average_Speed)
 }
 function SpawnCake () {
     Snack = sprites.create(assets.image`Cake Image`, SpriteKind.Collectible)
@@ -501,7 +556,7 @@ function SpawnZombie2 () {
     200,
     true
     )
-    Zombie_2.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Zombie_2.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 function SpawnClam () {
     Clam = sprites.create(assets.image`Clam Image`, SpriteKind.Enemy)
@@ -518,7 +573,7 @@ function SpawnClam () {
     100,
     true
     )
-    Clam.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Above_Average_Speed)
+    Clam.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Above_Average_Speed)
 }
 function SpawnEvilPrincess () {
     Evil_Princess = sprites.create(assets.image`Evil Princess Image`, SpriteKind.Enemy)
@@ -531,7 +586,7 @@ function SpawnEvilPrincess () {
     Enemy_Health.max = 500
     Enemy_Health.value = Enemy_Health.max
     Evil_Princess.setKind(SpriteKind.Visual)
-    Evil_Princess.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Evil_Princess.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
     characterAnimations.loopFrames(
     Evil_Princess,
     assets.animation`Evil Princess Animation`,
@@ -654,7 +709,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Right, ControllerButtonEvent.Pressed, func
             mp.changePlayerStateBy(player2, MultiplayerState.Class, 1)
             Ship = sprites.create(assets.image`Ship Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Ship.sayText("LOCKED")
+                Ship.sayText("$1000")
             } else {
                 Ship.sayText("Ship")
             }
@@ -664,7 +719,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Right, ControllerButtonEvent.Pressed, func
             mp.changePlayerStateBy(player2, MultiplayerState.Class, 1)
             Plane = sprites.create(assets.image`Plane Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Plane.sayText("LOCKED")
+                Plane.sayText("$1000")
             } else {
                 Plane.sayText("Plane")
             }
@@ -680,7 +735,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Right, ControllerButtonEvent.Pressed, func
             mp.changePlayerStateBy(player2, MultiplayerState.Class, 1)
             Meteor = sprites.create(assets.image`Asteroid Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Meteor.sayText("LOCKED")
+                Meteor.sayText("$1000")
             } else {
                 Meteor.sayText("Meteor")
             }
@@ -786,7 +841,7 @@ function SpawnSkull () {
     100,
     characterAnimations.rule(Predicate.Moving)
     )
-    Skull.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Average_Speed)
+    Skull.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Average_Speed)
 }
 function SpawnEgg (Type: string, Parent: Sprite) {
     if (Type == "Mini") {
@@ -803,9 +858,9 @@ function SpawnEgg (Type: string, Parent: Sprite) {
         statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, Mini_Dino).setBarBorder(1, 15)
         statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, Mini_Dino).setColor(5, 15)
         Mini_Dino.setPosition(Parent.x, Parent.y)
-        Mini_Dino.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), 75)
+        Mini_Dino.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), 75)
         pause(200)
-        Mini_Dino.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), 0)
+        Mini_Dino.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), 0)
     }
 }
 function SpawnCoin () {
@@ -852,7 +907,7 @@ function SpawnError () {
     Enemy_Health.max = 200
     Enemy_Health.value = Enemy_Health.max
     sprites.setDataString(RandomSprite, "Enemy Type", "Error")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Above_Average_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Above_Average_Speed)
 }
 function SpawnRedOrb () {
     Red_Orb = sprites.create(assets.image`Red Orb`, SpriteKind.Collectible)
@@ -894,15 +949,72 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
         if (Start_Battle == 0) {
             for (let index = 0; index <= 3; index++) {
                 if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) - 1] == 0) {
-                    game.showLongText("You cannot use a locked character!", DialogLayout.Bottom)
+                    if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) >= 8) { 
+                        if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 8 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Ship for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[7] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+                            } else {
+                                game.reset()
+                            }
+                            
+                        } else if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 9 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Plane for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[8] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+                            } else {
+                                game.reset()
+                            }
+                        } else if (mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 10 && blockSettings.readNumber("Cash") >= 1000) {
+                            game.showLongText("Do you want to purchase Meteor for 1000 cash?", DialogLayout.Bottom)
+                            story.showPlayerChoices("Yes.", "No.")
+                            if (story.getLastAnswer() == "Yes.") {
+                                Classes[9] = 1
+                                blockSettings.writeNumberArray("Classes", Classes)
+                                blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") - 1000)
+
+                            } else {
+                                game.reset()
+                            }
+                        } else {
+                            game.showLongText("You can buy this character when you have enough cash.", DialogLayout.Bottom)
+                        }
+                        
+                    } else {
+                        game.showLongText("You cannot use a locked character!", DialogLayout.Bottom)
+                    }
                     break;
                 } else {
+                    if ((mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 6)) {
+                        Duck_Count += 1
+                    } else if ((mp.getPlayerState(mp.getPlayerByNumber(index + 1), MultiplayerState.Class) == 10)) {
+                        Meteor_Count += 1
+                    }
+                    if (Duck_Count >= 2) {
+                        game.showLongText("No more than 1 Duck!", DialogLayout.Bottom)
+                        Duck_Count = 0
+                        Meteor_Count = 0
+                        break;
+                    } else if (Meteor_Count >= 2) {
+                        game.showLongText("No more than 1 Meteor!", DialogLayout.Bottom)
+                        Duck_Count = 0
+                        Meteor_Count = 0
+                        break;
+                    }
                     if (index == 3) {
                         Game_Mode = "Arcade"
                         Start_Battle = 1
                     }
                     continue;
                 }
+                Duck_Count = 0
+                Meteor_Count = 0
             }
         } else if (Start_Battle == 1) {
             if (Players[mp.getPlayerProperty(player2, mp.PlayerProperty.Number)] == mp.getPlayerProperty(player2, mp.PlayerProperty.Number)) {
@@ -985,6 +1097,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, mp.getPlayerSprite(player2), 25 * index + -50, -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -997,6 +1112,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, mp.getPlayerSprite(player2), 50, 25 * index + -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -1009,6 +1127,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, mp.getPlayerSprite(player2), 25 * index + -50, 50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -1021,6 +1142,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, mp.getPlayerSprite(player2), -50, 25 * index + -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -1097,6 +1221,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                             }
                             sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                             sprites.setDataNumber(Laser_Bullet, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                            if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                            }
                         } else if (mp.getPlayerState(player2, MultiplayerState.Class) == 9) {
                             mp.setPlayerState(player2, MultiplayerState.Attacking, 0)
                             if (mp.getPlayerState(player2, MultiplayerState.Direction) == 1) {
@@ -1111,6 +1238,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Pressed, function
                             sprites.setDataString(Explosive_Bullet, "Projectile", "Explosive Bullet")
                             sprites.setDataBoolean(Explosive_Bullet, "Activated?", false)
                             sprites.setDataNumber(Explosive_Bullet, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                            if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                Explosive_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                            }
                         } else if (mp.getPlayerState(player2, MultiplayerState.Class) == 10) {
                             mp.setPlayerState(player2, MultiplayerState.Attacking, 0)
                             Small_Meteor = darts.create(assets.image`Small Meteor Image`, SpriteKind.Projectile, mp.getPlayerSprite(player2).x, mp.getPlayerSprite(player2).y)
@@ -1257,7 +1387,7 @@ function SpawnMiniDino (Parent: Sprite) {
     200,
     true
     )
-    Mini_Dino.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Below_Average_Speed)
+    Mini_Dino.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Below_Average_Speed)
 }
 function SpawnAkita () {
     RandomEnemy = assets.image`Akita`
@@ -1270,7 +1400,7 @@ function SpawnAkita () {
     RandomEnemy.replace(13, randint(0, 15))
     RandomEnemy.replace(15, randint(1, 15))
     RandomSprite = sprites.create(RandomEnemy, SpriteKind.Enemy)
-    RandomSprite.scale = randint(2.1, 3)
+    RandomSprite.scale = randint(0.2, 0.5)
     sprites.setDataNumber(RandomSprite, "Player", randint(1, 4))
     tiles.placeOnTile(RandomSprite, tiles.getTileLocation(randint(0, 64), randint(0, 64)))
     Enemy_Health = statusbars.create(20, 4, StatusBarKind.EnemyHealth)
@@ -1299,9 +1429,9 @@ function SpawnDonut () {
 }
 scene.onOverlapTile(SpriteKind.Player, sprites.dungeon.stairWest, function (sprite, location) {
     Level += -1
-    tiles.placeOnTile(sprite, location)
     for (let index = 0; index <= 3; index++) {
         if (Players[index + 1] == index + 1) {
+            tiles.placeOnTile(mp.getPlayerSprite(mp.playerSelector(index + 1)), location)
             mp.getPlayerSprite(mp.getPlayerByNumber(index + 1)).x += -25 * mp.getPlayerSprite(mp.getPlayerByNumber(index + 1)).scale
         }
     }
@@ -1362,7 +1492,7 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Enemy, function (sprite, otherSpr
     }
 })
 sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Projectile, function (sprite, otherSprite) {
-    if (Game_Mode == "Versus" || Game_Mode == "Arcade" && sprites.readDataNumber(sprite, "Player") == 0) {
+    if (Game_Mode == "Versus" || (Game_Mode == "Arcade" && (sprites.readDataNumber(sprite, "Player") == 0 || sprites.readDataNumber(otherSprite, "Player") == 0) && sprites.readDataNumber(sprite, "Player") != sprites.readDataNumber(otherSprite, "Player"))) {
         if (sprites.readDataBoolean(sprite, "Has Status Bar?") == true) {
             music.play(music.createSoundEffect(WaveShape.Noise, 3300, 1400, 255, 0, 150, SoundExpressionEffect.Warble, InterpolationCurve.Linear), music.PlaybackMode.InBackground)
             if (sprites.readDataString(sprite, "Enemy Type") == "Mushroom") {
@@ -1385,33 +1515,43 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Projectile, function (sprite, oth
                     story.cancelCurrentCutscene()
                 })
             }
+            if (sprites.readDataNumber(otherSprite, "Player") != 0) {
+                sprites.setDataNumber(otherSprite, "Damage Multiplier", mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier))
+            } else {
+                sprites.setDataNumber(otherSprite, "Damage Multiplier", 1)
+            }
             if (sprites.readDataString(otherSprite, "Projectile") == "Laser") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, true)
                 pause(100)
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, false)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Explosion") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, true)
                 pause(100)
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, false)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Football") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprites.destroy(otherSprite)
                 sprite.follow(mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))), 0)
                 sprite.startEffect(effects.bubbles, 2000)
                 statusbars.getStatusBarAttachedTo(StatusBarKind.Energy, mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")))).value += 25
+                if (sprites.readDataNumber(otherSprite, "Player") != 0) {
+                    statusbars.getStatusBarAttachedTo(StatusBarKind.Energy, mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")))).value += 25
+                }
                 pause(2000)
                 sprite.follow(mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))), 5)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Heart") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprites.destroy(otherSprite)
-                if (mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.life) < 100) {
-                    mp.changePlayerStateBy(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.life, 1)
+                if (sprites.readDataNumber(otherSprite, "Player") != 0) {
+                    if (mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.life) < 100) {
+                        mp.changePlayerStateBy(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.life, 1)
+                    }
                 }
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Star") {
                 if (sprites.readDataBoolean(otherSprite, "Activated?") == false) {
-                    statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -20 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                    statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -20 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                     animation.runImageAnimation(
                     otherSprite,
                     assets.animation`Star Hit Animation`,
@@ -1425,11 +1565,11 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Projectile, function (sprite, oth
                         pause(100)
                     }
                 } else {
-                    statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -10 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                    statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -10 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                     pause(800)
                 }
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Flash") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, true)
                 pause(250)
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, false)
@@ -1440,16 +1580,22 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Projectile, function (sprite, oth
                 50,
                 false
                 )
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
-                mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))).setFlag(SpriteFlag.GhostThroughSprites, true)
-                pause(150)
-                mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))).setFlag(SpriteFlag.GhostThroughSprites, false)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
+                if (sprites.readDataNumber(otherSprite, "Player") != 0) {
+                    mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))).setFlag(SpriteFlag.GhostThroughSprites, true)
+                    pause(150)
+                    mp.getPlayerSprite(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player"))).setFlag(SpriteFlag.GhostThroughSprites, false)
+                } else {
+                    pause(150)
+                    sprites.setDataNumber(Shark, "Attack", 0)
+                    Shark.setFlag(SpriteFlag.GhostThroughSprites, false)
+                }
                 sprites.destroy(otherSprite)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Laser Bullet") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprites.destroy(otherSprite)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Laser Sniper") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -20 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -20 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, true)
                 pause(500)
                 sprite.setFlag(SpriteFlag.GhostThroughSprites, false)
@@ -1467,16 +1613,16 @@ sprites.onOverlap(SpriteKind.Enemy, SpriteKind.Projectile, function (sprite, oth
                 otherSprite.scale = 3
                 otherSprite.vx = 0
                 otherSprite.vy = 0
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -2 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 pause(300)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Splitter") {
                 otherSprite.setFlag(SpriteFlag.GhostThroughSprites, true)
                 otherSprite.follow(sprite, 75)
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -1 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 pause(500)
                 otherSprite.setFlag(SpriteFlag.GhostThroughSprites, false)
             } else if (sprites.readDataString(otherSprite, "Projectile") == "Small Meteor") {
-                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * mp.getPlayerState(mp.getPlayerByNumber(sprites.readDataNumber(otherSprite, "Player")), MultiplayerState.Damage_Multiplier)
+                statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, sprite).value += -3 * sprites.readDataNumber(otherSprite, "Damage Multiplier")
                 sprites.destroy(otherSprite)
             } else {
             	
@@ -1660,8 +1806,6 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Collectible, function (sprite, o
     } else if (sprites.readDataString(otherSprite, "Collectible") == "Strawberry") {
         sprites.destroy(otherSprite)
         mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.life, 30)
-        mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.A_Energy_Requirement, -25)
-        mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.B_Energy_Requirement, -25)
         if (sprites.readDataBoolean(sprite, "Venomed?") == true) {
             sprites.setDataBoolean(sprite, "Venomed?", false)
         }
@@ -1688,17 +1832,17 @@ statusbars.onZero(StatusBarKind.EnemyHealth, function (status) {
         info.changeScoreBy(statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, status.spriteAttachedTo()).max)
         if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Mushroom") {
             pause(500)
-            Flash = sprites.createProjectileFromSprite(assets.image`Flash Image`, status.spriteAttachedTo(), 0, 0)
-            sprites.setDataString(Flash, "Projectile", "Flash")
-            sprites.setDataNumber(Flash, "Player", 0)
-            Flash.z = -1
-            Flash.scale = 3
-            Flash.lifespan = 3000
-            Flash.setFlag(SpriteFlag.AutoDestroy, false)
-            Flash.setFlag(SpriteFlag.DestroyOnWall, false)
-            Flash.setFlag(SpriteFlag.GhostThroughWalls, true)
+            Flash_Enemy = sprites.createProjectileFromSprite(assets.image`Flash Image`, status.spriteAttachedTo(), 0, 0)
+            sprites.setDataString(Flash_Enemy, "Projectile", "Flash")
+            sprites.setDataNumber(Flash_Enemy, "Player", 0)
+            Flash_Enemy.z = -1
+            Flash_Enemy.scale = 3
+            Flash_Enemy.lifespan = 3000
+            Flash_Enemy.setFlag(SpriteFlag.AutoDestroy, false)
+            Flash_Enemy.setFlag(SpriteFlag.DestroyOnWall, false)
+            Flash_Enemy.setFlag(SpriteFlag.GhostThroughWalls, true)
             animation.runImageAnimation(
-            Flash,
+            Flash_Enemy,
             assets.animation`Flash Animation`,
             500,
             false
@@ -1706,23 +1850,27 @@ statusbars.onZero(StatusBarKind.EnemyHealth, function (status) {
         }
     }
     if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Evil Princess" || sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Big Dino" || (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Zombie 4" || sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Shark") || sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Bug") {
-        if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Evil Princess") {
+        if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Evil Princess" && Cheats == false) {
             Classes[3] = 1
             game.setGameOverMessage(true, "Triumph + Obtained Princess!")
-        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Big Dino") {
+        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Big Dino" && Cheats == false) {
             Classes[4] = 1
             game.setGameOverMessage(true, "Triumph + Obtained Hero Dino!")
-        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Zombie 4") {
+        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Zombie 4" && Cheats == false) {
             Classes[6] = 1
             game.setGameOverMessage(true, "Triumph + Obtained Car!")
-        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Shark") {
+        } else if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Shark" && Cheats == false) {
             Classes[5] = 1
             game.setGameOverMessage(true, "Triumph + Obtained Duck!")
         } else {
             game.setGameOverMessage(true, "Triumph!")
         }
         blockSettings.writeNumberArray("Classes", Classes)
-        blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.score) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.score)))))
+        if (Map == 5 && Game_Mode == "Arcade" ) {
+            blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.score) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.score))) * 60))
+        } else {
+            blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.score) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.score)))))
+        }
         game.gameOver(true)
     } else {
         sprites.destroy(status.spriteAttachedTo())
@@ -1771,7 +1919,7 @@ function SpawnZombie4 () {
     200,
     true
     )
-    Zombie_4.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Zombie_4.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 sprites.onOverlap(SpriteKind.Projectile, SpriteKind.Projectile, function (sprite, otherSprite) {
     if (Game_Mode == "Versus" || (sprites.readDataNumber(sprite, "Player") == 0 || sprites.readDataNumber(otherSprite, "Player") == 0)) {
@@ -1852,7 +2000,11 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Projectile, function (sprite, ot
                 sprites.setDataNumber(otherSprite, "Damage Multiplier", 1)
             }
             if (sprites.readDataNumber(otherSprite, "Player") != mp.getPlayerProperty(mp.getPlayerBySprite(sprite), mp.PlayerProperty.Number)) {
-                scene.cameraShake(4, 500)
+                if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                    splitScreen.cameraShake(mp.getPlayerProperty(mp.getPlayerBySprite(sprite), mp.PlayerProperty.Number) - 1, 4, 500)
+                } else {
+                    scene.cameraShake(4, 500)
+                }
                 music.play(music.createSoundEffect(WaveShape.Triangle, 300, 200, 255, 0, 75, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.InBackground)
                 if (sprites.readDataString(otherSprite, "Projectile") == "Laser") {
                     mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.life, -3 * sprites.readDataNumber(otherSprite, "Damage Multiplier"))
@@ -1999,9 +2151,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Projectile, function (sprite, ot
 })
 scene.onOverlapTile(SpriteKind.Player, sprites.dungeon.stairEast, function (sprite, location) {
     Level += 1
-    tiles.placeOnTile(sprite, location)
     for (let index = 0; index <= 3; index++) {
         if (Players[index + 1] == index + 1) {
+            tiles.placeOnTile(mp.getPlayerSprite(mp.playerSelector(index + 1)), location)
             mp.getPlayerSprite(mp.getPlayerByNumber(index + 1)).x += 25 * mp.getPlayerSprite(mp.getPlayerByNumber(index + 1)).scale
         }
     }
@@ -2023,7 +2175,7 @@ function SpawnBat () {
     100,
     characterAnimations.rule(Predicate.Moving)
     )
-    Bat.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Fast_Speed)
+    Bat.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Fast_Speed)
 }
 scene.onOverlapTile(SpriteKind.Player, assets.tile`Exit`, function (sprite, location) {
     Level += -1
@@ -2053,7 +2205,7 @@ function SpawnBruh () {
     Enemy_Health.setBarBorder(1, 15)
     Enemy_Health.max = 60
     sprites.setDataString(RandomSprite, "Enemy Type", "Bruh")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Fast_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Fast_Speed)
 }
 /**
  * Things to work on.
@@ -2086,7 +2238,7 @@ function SpawnRandom () {
     Enemy_Health.setBarBorder(1, 15)
     Enemy_Health.max = 100
     sprites.setDataString(RandomSprite, "Enemy Type", "Random")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Average_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Average_Speed)
 }
 function SpawnZombie3 () {
     Zombie_3 = sprites.create(assets.image`Zombie 3 Image`, SpriteKind.Enemy)
@@ -2103,7 +2255,7 @@ function SpawnZombie3 () {
     200,
     true
     )
-    Zombie_3.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Zombie_3.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 statusbars.onStatusReached(StatusBarKind.EnemyHealth, statusbars.StatusComparison.LTE, statusbars.ComparisonType.Percentage, 75, function (status) {
     if (sprites.readDataString(status.spriteAttachedTo(), "Enemy Type") == "Big Dino") {
@@ -2232,7 +2384,7 @@ function SpawnCrab () {
     200,
     characterAnimations.rule(Predicate.Moving)
     )
-    Crab.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Average_Speed)
+    Crab.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Average_Speed)
 }
 function SpawnBurger () {
     Snack = sprites.create(assets.image`Burger Image`, SpriteKind.Collectible)
@@ -2344,7 +2496,7 @@ function SpawnShark () {
     200,
     characterAnimations.rule(Predicate.Moving)
     )
-    Shark.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Shark.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 function SpawnBigDino () {
     Big_Dino = sprites.create(assets.image`Big Dino Image`, SpriteKind.Enemy)
@@ -2362,7 +2514,7 @@ function SpawnBigDino () {
     200,
     characterAnimations.rule(Predicate.Moving)
     )
-    Big_Dino.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    Big_Dino.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 function SpawnCherry (X: number, Y: number) {
     Snack = sprites.create(assets.image`Cherry Image`, SpriteKind.Collectible)
@@ -2589,7 +2741,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Left, ControllerButtonEvent.Pressed, funct
             mp.changePlayerStateBy(player2, MultiplayerState.Class, -1)
             Ship = sprites.create(assets.image`Ship Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Ship.sayText("LOCKED")
+                Ship.sayText("$1000")
             } else {
                 Ship.sayText("Ship")
             }
@@ -2599,7 +2751,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Left, ControllerButtonEvent.Pressed, funct
             mp.changePlayerStateBy(player2, MultiplayerState.Class, -1)
             Plane = sprites.create(assets.image`Plane Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Plane.sayText("LOCKED")
+                Plane.sayText("$1000")
             } else {
                 Plane.sayText("Plane")
             }
@@ -2615,7 +2767,7 @@ mp.onButtonEvent(mp.MultiplayerButton.Left, ControllerButtonEvent.Pressed, funct
             mp.setPlayerState(player2, MultiplayerState.Class, 10)
             Meteor = sprites.create(assets.image`Asteroid Image`, SpriteKind.Visual)
             if (blockSettings.readNumberArray("Classes")[mp.getPlayerState(player2, MultiplayerState.Class) - 1] == 0) {
-                Meteor.sayText("LOCKED")
+                Meteor.sayText("$1000")
             } else {
                 Meteor.sayText("Meteor")
             }
@@ -2793,7 +2945,7 @@ function SpawnGlitch () {
     Enemy_Health.max = 700
     Enemy_Health.value = Enemy_Health.max
     sprites.setDataString(RandomSprite, "Enemy Type", "Glitch")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Below_Average_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Below_Average_Speed)
 }
 function SpawnMushroom () {
     Mushroom = sprites.create(assets.image`Mushroom Image`, SpriteKind.Enemy)
@@ -2810,7 +2962,7 @@ function SpawnMushroom () {
     200,
     true
     )
-    Mushroom.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Above_Average_Speed)
+    Mushroom.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Above_Average_Speed)
 }
 function SpawnClownFish () {
     Clown_Fish = sprites.create(assets.image`Clown Fish Image`, SpriteKind.Enemy)
@@ -2820,13 +2972,14 @@ function SpawnClownFish () {
     Enemy_Health.setColor(4, 15, 3)
     Enemy_Health.setBarBorder(1, 15)
     Enemy_Health.max = 6
+    sprites.setDataString(Clown_Fish, "Enemy Type", "Clown Fish")
     animation.runImageAnimation(
     Clown_Fish,
     assets.animation`Clown Fish Animation`,
     200,
     true
     )
-    Clown_Fish.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Below_Average_Speed)
+    Clown_Fish.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Below_Average_Speed)
 }
 mp.onLifeZero(function (player2) {
     if (Game_Mode == "Arcade") {
@@ -2837,7 +2990,7 @@ mp.onLifeZero(function (player2) {
                 }
             }
         }
-        blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.score) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.score)))))
+        blockSettings.writeNumber("Cash", blockSettings.readNumber("Cash") + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.score) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.score) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.score))) * 45))
         game.gameOver(false)
     } else {
         sprites.destroy(mp.getPlayerSprite(player2))
@@ -2906,7 +3059,7 @@ function SpawnFault () {
     Enemy_Health.max = 400
     Enemy_Health.value = Enemy_Health.max
     sprites.setDataString(RandomSprite, "Enemy Type", "Fault")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Average_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Average_Speed)
 }
 mp.onScore(286, function (player2) {
     if (Map == 5) {
@@ -3118,6 +3271,9 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Repeated, functio
                         }
                         sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                         sprites.setDataNumber(Laser_Bullet, "Player", mp.getPlayerProperty(player2, mp.PlayerProperty.Number))
+                        if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                            Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                        }
                     } else if (mp.getPlayerState(player2, MultiplayerState.Class) == 2) {
                         statusbars.getStatusBarAttachedTo(StatusBarKind.Energy, mp.getPlayerSprite(player2)).value += 0 - mp.getPlayerState(player2, MultiplayerState.A_Energy_Requirement)
                         mp.changePlayerStateBy(player2, MultiplayerState.Charge_Up_Time, 0.32)
@@ -3141,6 +3297,7 @@ mp.onButtonEvent(mp.MultiplayerButton.A, ControllerButtonEvent.Repeated, functio
     }
 })
 mp.onControllerEvent(ControllerEvent.Connected, function (player2) {
+    pauseUntil(() => Start_Battle == 0)
     mp.setPlayerState(player2, 102, 0)
     mp.setPlayerState(player2, MultiplayerState.Class, 2)
     mp.setPlayerState(player2, MultiplayerState.Attacking, 0)
@@ -3312,7 +3469,11 @@ mp.onControllerEvent(ControllerEvent.Connected, function (player2) {
     mp.setPlayerState(player2, MultiplayerState.Damage_Multiplier, 1)
     sprites.setDataBoolean(mp.getPlayerSprite(player2), "Temporary Speed?", false)
     sprites.setDataBoolean(mp.getPlayerSprite(player2), "Has Bubble?", false)
-    mp.getPlayerSprite(player2).setFlag(SpriteFlag.StayInScreen, true)
+    if (Game_Mode == "Arcade") {
+        mp.getPlayerSprite(player2).setFlag(SpriteFlag.StayInScreen, false)
+    } else if (Game_Mode == "Versus") {
+        mp.getPlayerSprite(player2).setFlag(SpriteFlag.StayInScreen, true)
+    }
     mp.getPlayerSprite(player2).setFlag(SpriteFlag.ShowPhysics, false)
     Energ = statusbars.create(20, 4, StatusBarKind.Energy)
     Energ.attachToSprite(mp.getPlayerSprite(player2))
@@ -3378,7 +3539,7 @@ function SpawnMonkey () {
     100,
     characterAnimations.rule(Predicate.Moving)
     )
-    Monkey.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Fast_Speed)
+    Monkey.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Fast_Speed)
 }
 function SpawnBug () {
     RandomEnemy = assets.image`Bug`
@@ -3402,13 +3563,14 @@ function SpawnBug () {
     Enemy_Health.max = 3000 * (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.Damage_Multiplier) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Two), MultiplayerState.Damage_Multiplier) + (mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Three), MultiplayerState.Damage_Multiplier) + mp.getPlayerState(mp.playerSelector(mp.PlayerNumber.Four), MultiplayerState.Damage_Multiplier))))
     Enemy_Health.value = Enemy_Health.max
     sprites.setDataString(RandomSprite, "Enemy Type", "Bug")
-    RandomSprite.follow(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)), Boss_Speed)
+    RandomSprite.follow(sprites.allOfKind(SpriteKind.Player)._pickRandom(), Boss_Speed)
 }
 sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSprite) {
     if (sprites.readDataString(otherSprite, "Enemy Type") == "Moral Dino") {
         otherSprite.follow(sprite, 75)
     } else if (sprites.readDataString(otherSprite, "Enemy Type") == "Akita") {
         mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.life, 15)
+        statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, otherSprite).value += -1
         otherSprite.follow(sprite, mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Speed))
         pause(500)
     }
@@ -3475,6 +3637,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, otherSprite, 25 * index + -50, -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", 0)
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -3489,6 +3654,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, otherSprite, 50, 25 * index + -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", 0)
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -3503,6 +3671,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, otherSprite, 25 * index + -50, 50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", 0)
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -3517,6 +3688,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                                     Heart = sprites.createProjectileFromSprite(assets.image`Heart Image`, otherSprite, -50, 25 * index + -50)
                                     sprites.setDataString(Heart, "Projectile", "Heart")
                                     sprites.setDataNumber(Heart, "Player", 0)
+                                    if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                        Heart.setFlag(SpriteFlag.AutoDestroy, false)
+                                    }
                                     animation.runImageAnimation(
                                     Heart,
                                     assets.animation`Heart Animation`,
@@ -3635,6 +3809,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                             sprites.setDataString(Explosive_Bullet, "Projectile", "Explosive Bullet")
                             sprites.setDataBoolean(Explosive_Bullet, "Activated?", false)
                             sprites.setDataNumber(Explosive_Bullet, "Player", 0)
+                            if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                Explosive_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                            }
                         } else if (sprites.readDataNumber(otherSprite, "Attack") == 2) {
                             pause(200)
                             if (characterAnimations.matchesRule(otherSprite, characterAnimations.rule(Predicate.MovingUp)) || characterAnimations.matchesRule(sprite, characterAnimations.rule(Predicate.MovingUp))) {
@@ -3740,30 +3917,45 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                             Laser_Bullet = sprites.createProjectileFromSprite(assets.image`Laser Bullet`, otherSprite, 0, -150)
                             sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                             sprites.setDataNumber(Laser_Bullet, "Player", 0)
+                            if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                            }
                             pause(500)
                             for (let index = 0; index <= randint(0, 8); index++) {
                                 pause(50)
                                 Laser_Bullet = sprites.createProjectileFromSprite(assets.image`Laser Bullet`, otherSprite, 0, -150)
                                 sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                                 sprites.setDataNumber(Laser_Bullet, "Player", 0)
+                                if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                    Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                                }
                             }
                             for (let index = 0; index <= randint(0, 9); index++) {
                                 pause(50)
                                 Laser_Bullet = sprites.createProjectileFromSprite(assets.image`Laser Bullet`, otherSprite, 150, 0)
                                 sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                                 sprites.setDataNumber(Laser_Bullet, "Player", 0)
+                                if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                    Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                                }
                             }
                             for (let index = 0; index <= randint(0, 9); index++) {
                                 pause(50)
                                 Laser_Bullet = sprites.createProjectileFromSprite(assets.image`Laser Bullet`, otherSprite, 0, 150)
                                 sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                                 sprites.setDataNumber(Laser_Bullet, "Player", 0)
+                                if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                    Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                                }
                             }
                             for (let index = 0; index <= randint(0, 9); index++) {
                                 pause(50)
                                 Laser_Bullet = sprites.createProjectileFromSprite(assets.image`Laser Bullet`, otherSprite, -150, 0)
                                 sprites.setDataString(Laser_Bullet, "Projectile", "Laser Bullet")
                                 sprites.setDataNumber(Laser_Bullet, "Player", 0)
+                                if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                    Laser_Bullet.setFlag(SpriteFlag.AutoDestroy, false)
+                                }
                             }
                         } else if (sprites.readDataNumber(otherSprite, "Attack") == 2) {
                             pause(2000)
@@ -3827,7 +4019,11 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                     if (sprites.readDataNumber(otherSprite, "Player") != mp.getPlayerProperty(mp.getPlayerBySprite(sprite), mp.PlayerProperty.Number)) {
                         if (sprite.overlapsWith(otherSprite)) {
                             music.play(music.createSoundEffect(WaveShape.Square, 200, 1, 255, 0, 100, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.InBackground)
-                            scene.cameraShake(4, 500)
+                            if (sprites.allOfKind(SpriteKind.Player).length >= 2 && Game_Mode == "Arcade") {
+                                splitScreen.cameraShake(mp.getPlayerProperty(mp.getPlayerBySprite(sprite), mp.PlayerProperty.Number) - 1, 4, 500)
+                            } else {
+                                scene.cameraShake(4, 500)
+                            }
                             if (sprites.readDataString(otherSprite, "Enemy Type") == "Bat") {
                                 mp.changePlayerStateBy(mp.getPlayerBySprite(sprite), MultiplayerState.life, -20)
                             } else if (sprites.readDataString(otherSprite, "Enemy Type") == "Snake") {
@@ -3886,7 +4082,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                     } else if (mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Class) == 5) {
                         if (sprites.readDataNumber(otherSprite, "Player") != mp.getPlayerProperty(mp.getPlayerBySprite(sprite), mp.PlayerProperty.Number)) {
                             statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, otherSprite).value += -18 * mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Damage_Multiplier)
-                            otherSprite.setStayInScreen(true)
+                            if (sprites.allOfKind(SpriteKind.Player).length < 2 && Game_Mode == "Arcade") {
+                                otherSprite.setStayInScreen(true)
+                            }
                             if (mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Direction) == 1) {
                                 otherSprite.vy += -1000
                             } else if (mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Direction) == 2) {
@@ -3901,7 +4099,9 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
                             pause(500)
                             otherSprite.vx = 0
                             otherSprite.vy = 0
-                            otherSprite.setStayInScreen(false)
+                            if (sprites.allOfKind(SpriteKind.Player).length < 2 && Game_Mode == "Arcade") {
+                                otherSprite.setStayInScreen(false)
+                            }
                         }
                     } else if (mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Class) == 7) {
                         statusbars.getStatusBarAttachedTo(StatusBarKind.EnemyHealth, otherSprite).value += -1 * mp.getPlayerState(mp.getPlayerBySprite(sprite), MultiplayerState.Damage_Multiplier)
@@ -3936,6 +4136,7 @@ sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (sprite, otherSp
         }
     }
 })
+let Flash_Enemy: Sprite = null
 let Small_Meteor_Enemy: Dart = null
 let Monkey: Sprite = null
 let Energ: StatusBarSprite = null
@@ -4045,6 +4246,8 @@ Fast_Speed = 50
 Map = 0
 Level = 1
 let Wave = 0
+let Duck_Count = 0
+let Meteor_Count = 0
 Buttons = sprites.create(assets.image`Buttons`, SpriteKind.Visual)
 scene.setBackgroundColor(13)
 Buttons.setPosition(145, 100)
@@ -4056,10 +4259,6 @@ textSprite.setFlag(SpriteFlag.RelativeToCamera, true)
 pauseUntil(() => Start_Battle == 1)
 sprites.destroy(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)))
 sprites.destroyAllSpritesOfKind(SpriteKind.Visual)
-Camera = sprites.create(assets.image`Laser Bullet`, SpriteKind.Visual)
-Camera.setFlag(SpriteFlag.Ghost, true)
-Camera.setFlag(SpriteFlag.Invisible, true)
-Camera.setFlag(SpriteFlag.StayInScreen, true)
 pause(1)
 if (Game_Mode == "Arcade") {
     Purple_Wall_Toggle = false
@@ -4084,7 +4283,18 @@ if (Game_Mode == "Arcade") {
     } else {
         Map = 5
     }
-    scene.cameraFollowSprite(mp.getPlayerSprite(mp.playerSelector(mp.PlayerNumber.One)))
+    scene.cameraFollowSprite(sprites.allOfKind(SpriteKind.Player)[0])
+    if (sprites.allOfKind(SpriteKind.Player).length >= 2) {
+        splitScreen.setSplitScreenEnabled(true)
+        for (let i = 0; i < sprites.allOfKind(SpriteKind.Player).length; i++) {
+
+
+            splitScreen.cameraFollowSprite(mp.getPlayerProperty(mp.getPlayerBySprite(sprites.allOfKind(SpriteKind.Player)[i]), mp.PlayerProperty.Number) - 1, sprites.allOfKind(SpriteKind.Player)[i])
+        }
+        
+    } else  {
+        
+    }
     mp.setPlayerState(mp.playerSelector(mp.PlayerNumber.One), MultiplayerState.Direction, 3)
     if (Map == 1) {
         tiles.setCurrentTilemap(tilemap`Dungeon Level 1`)
@@ -4171,6 +4381,7 @@ if (Game_Mode == "Arcade") {
     	
     }
 }
+pause(2000)
 game.onUpdateInterval(2000, function () {
     if (Start_Battle == 1) {
         for (let index = 0; index <= 3; index++) {
